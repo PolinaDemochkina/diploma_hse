@@ -12,7 +12,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.example.emotionrecognition.mtcnn.FaceDetector
-import kotlinx.android.synthetic.main.activity_second.*
 import java.util.*
 
 
@@ -22,7 +21,7 @@ class MainActivity : AppCompatActivity() {
         const val TAG = "MainActivity"
         var mtcnnFaceDetector: FaceDetector? = null
         var videoDetector: EmotionPyTorchVideoClassifier? = null
-        var clf: LinearSVC? = null
+        var clf: LinearSVR? = null
 
         fun resize(frame: Bitmap?, image: Boolean): Bitmap? {
             val ratio: Float = if (image) {
@@ -135,7 +134,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         try {
-            clf = LinearSVC(applicationContext)
+            clf = LinearSVR(applicationContext)
         } catch (e: java.lang.Exception) {
             Log.e(TAG, "Exception initializing classifier!", e)
         }

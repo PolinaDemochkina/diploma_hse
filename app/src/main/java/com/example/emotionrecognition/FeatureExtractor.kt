@@ -10,10 +10,7 @@ import androidx.annotation.WorkerThread
 import com.example.emotionrecognition.mtcnn.Box
 import org.jetbrains.kotlinx.multik.api.mk
 import org.jetbrains.kotlinx.multik.api.ndarray
-import org.jetbrains.kotlinx.multik.jvm.JvmMath.maxD2
 import org.jetbrains.kotlinx.multik.jvm.JvmMath.minD2
-import org.jetbrains.kotlinx.multik.jvm.JvmStatistics.meanD2
-import org.jetbrains.kotlinx.multik.ndarray.data.*
 import org.jetbrains.kotlinx.multik.ndarray.operations.toList
 import org.pytorch.IValue
 import org.pytorch.Module
@@ -29,9 +26,9 @@ import kotlin.time.ExperimentalTime
 class EmotionPyTorchVideoClassifier(context: Context) {
     companion object {
         private const val TAG = "Video detection"
-        private const val MODEL_FILE = "mobile_efficientNet.pt"
+        private const val MODEL_FILE = "effcientNet2_for_mobile.pt"
         @Throws(IOException::class)
-        fun assetFilePath(context: Context, assetName: String?): String {
+        fun assetFilePath(context: Context, assetName: String): String {
             val file = File(context.filesDir, assetName)
             if (file.exists() && file.length() > 0) {
                 return file.absolutePath
@@ -77,7 +74,7 @@ class EmotionPyTorchVideoClassifier(context: Context) {
 
     private var labels: ArrayList<String>? = null
     private var module: Module? = null
-    private val length = 1280
+    private val length = 1408
 
     class AnalysisResult(val box: Rect, val mResults: String, val width: Int, val height: Int)
 
@@ -85,19 +82,20 @@ class EmotionPyTorchVideoClassifier(context: Context) {
         val br: BufferedReader?
         labels = ArrayList()
         try {
-            br = BufferedReader(InputStreamReader(context.assets.open("affectnet_labels.txt")))
+            br = BufferedReader(InputStreamReader(context.assets.open("engagement_labels.txt")))
             br.useLines { lines -> lines.forEach {
                 val categoryInfo = it.trim { it <= ' ' }.split(":").toTypedArray()
                 val category = categoryInfo[1]
                 labels!!.add(category) } }
             br.close()
         } catch (e: IOException) {
-            throw RuntimeException("Problem reading emotion label file!", e)
+            throw RuntimeException("Problem reading label file!", e)
         }
     }
 
     private fun classifyFeatures(res: FloatArray): String {
         val scores = mutableListOf<Float>()
+        val score2class = mapOf(0.0 to 0, 0.33 to 1, 0.66 to 2, 0.99 to 3)
         for (i in 0 until Constants.COUNT_OF_FRAMES_PER_INFERENCE){
             if ((i+1)*length <= res.size) {
                 scores.addAll(res.sliceArray(length*i until length*(i+1)).toList())
@@ -105,32 +103,41 @@ class EmotionPyTorchVideoClassifier(context: Context) {
         }
         val features = mk.ndarray(mk[scores])
         val min = minD2(features, axis = 0).toList()
-        val max = maxD2(features, axis = 0).toList()
-        val mean: List<Float> = meanD2(features, axis = 0).toList().map { it.toFloat() }
-        val std = mutableListOf<Float>()
-        val rows = features.shape[0]
-        for (i in 0 until length) {
-            std.add(calculateSD(features[0.r..rows, i].toList()))
+//        val max = maxD2(features, axis = 0).toList()
+//        val mean: List<Float> = meanD2(features, axis = 0).toList().map { it.toFloat() }
+//        val std = mutableListOf<Float>()
+//        val rows = features.shape[0]
+//        for (i in 0 until length) {
+//            std.add(calculateSD(features[0.r..rows, i].toList()))
+//        }
+        val descriptor1 = min
+        var score1 = MainActivity.clf?.predict(descriptor1)
+        Log.e(MainActivity.TAG, score1.toString())
+        if (score1!! > 1) {
+            score1 = 1.0
         }
-        val descriptor = mean + std + min + max
-        val index = MainActivity.clf?.predict(descriptor)
-        Log.e(MainActivity.TAG, index.toString())
-        return labels!![index!!]
+        else if (score1 < 0) {
+            score1 = 0.0
+        }
+
+        val scoreAdj = 0.33*(Math.round(score1!! /0.33))
+
+        return labels!![score2class[scoreAdj]!!]
     }
 
-    private fun calculateSD(numArray: List<Float>): Float {
-        var sum = 0.0
-        var standardDeviation = 0.0
-        for (num in numArray) {
-            sum += num
-        }
-        val mean = sum / numArray.size
-        for (num in numArray) {
-            standardDeviation += Math.pow(num - mean, 2.0)
-        }
-        val divider = numArray.size - 1
-        return Math.sqrt(standardDeviation / divider).toFloat()
-    }
+//    private fun calculateSD(numArray: List<Float>): Float {
+//        var sum = 0.0
+//        var standardDeviation = 0.0
+//        for (num in numArray) {
+//            sum += num
+//        }
+//        val mean = sum / numArray.size
+//        for (num in numArray) {
+//            standardDeviation += Math.pow(num - mean, 2.0)
+//        }
+//        val divider = numArray.size - 1
+//        return Math.sqrt(standardDeviation / divider).toFloat()
+//    }
 
     @ExperimentalTime
     fun recognizeLiveVideo(inTensorBuffer: FloatBuffer): String {

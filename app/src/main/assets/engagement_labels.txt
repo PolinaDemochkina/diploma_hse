@@ -1,0 +1,4 @@
+0:Disengaged
+1:Barely Engaged
+2:Engaged
+3:Highly Engaged
