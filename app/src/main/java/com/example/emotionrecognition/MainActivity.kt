@@ -39,9 +39,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private val REQUEST_ACCESS_TYPE = 1
-    private val REQUEST_CODE_ASK_MULTIPLE_PERMISSIONS = 124
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -50,12 +47,32 @@ class MainActivity : AppCompatActivity() {
                 ActivityCompat.requestPermissions(
                     this,
                     it,
-                    REQUEST_CODE_ASK_MULTIPLE_PERMISSIONS
+                    Constants.REQUEST_CODE_ASK_MULTIPLE_PERMISSIONS
                 )
             }
         }
         else
             init()
+    }
+
+    private fun init() {
+        try {
+            MainActivity.mtcnnFaceDetector = FaceDetector.create(assets)
+        } catch (e: Exception) {
+            Log.d(MainActivity.TAG, "Exception initializing MTCNNModel!${e.stackTraceToString()}")
+        }
+
+        try {
+            MainActivity.videoDetector = EmotionPyTorchVideoClassifier(applicationContext)
+        } catch (e: java.lang.Exception) {
+            Log.e(MainActivity.TAG, "Exception initializing feature extractor!", e)
+        }
+
+        try {
+            MainActivity.clf = LinearSVR(applicationContext)
+        } catch (e: java.lang.Exception) {
+            Log.e(MainActivity.TAG, "Exception initializing classifier!", e)
+        }
     }
 
     private fun getRequiredPermissions(): Array<String?>? {
@@ -79,7 +96,7 @@ class MainActivity : AppCompatActivity() {
         grantResults: IntArray
     ) {
         when (requestCode) {
-            REQUEST_CODE_ASK_MULTIPLE_PERMISSIONS -> {
+            Constants.REQUEST_CODE_ASK_MULTIPLE_PERMISSIONS -> {
                 val perms: MutableMap<String, Int> = HashMap()
                 var allGranted = true
                 var i = 0
@@ -120,29 +137,9 @@ class MainActivity : AppCompatActivity() {
         return true
     }
 
-    private fun init() {
-        try {
-            mtcnnFaceDetector = FaceDetector.create(assets)
-        } catch (e: Exception) {
-            Log.d(TAG, "Exception initializing MTCNNModel!${e.stackTraceToString()}")
-        }
-
-        try {
-            videoDetector = EmotionPyTorchVideoClassifier(applicationContext)
-        } catch (e: java.lang.Exception) {
-            Log.e(TAG, "Exception initializing feature extractor!", e)
-        }
-
-        try {
-            clf = LinearSVR(applicationContext)
-        } catch (e: java.lang.Exception) {
-            Log.e(TAG, "Exception initializing classifier!", e)
-        }
-    }
-
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (resultCode == RESULT_OK && requestCode == REQUEST_ACCESS_TYPE) {
+        if (resultCode == RESULT_OK && requestCode == Constants.REQUEST_ACCESS_TYPE) {
             content = data?.data
             val intentNextStep = Intent(this, GalleryActivity::class.java)
             startActivity(intentNextStep)
@@ -153,7 +150,7 @@ class MainActivity : AppCompatActivity() {
         val intent = Intent()
         intent.type = "video/*"
         intent.action = Intent.ACTION_PICK
-        startActivityForResult(intent, REQUEST_ACCESS_TYPE)
+        startActivityForResult(intent, Constants.REQUEST_ACCESS_TYPE)
     }
 
     fun startLive(view: View) {

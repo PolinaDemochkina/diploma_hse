@@ -73,7 +73,7 @@ class GalleryActivity : Runnable, AppCompatActivity() {
         mThread?.start()
     }
 
-    @ExperimentalTime
+    @OptIn(kotlin.time.ExperimentalTime::class)
     @WorkerThread
     override fun run() {   // video recognition
         val mmr = MediaMetadataRetriever()

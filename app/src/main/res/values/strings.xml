@@ -1,8 +1,11 @@
 <resources>
     <string name="app_name">Engagement Prediction</string>
-    <string name="gallery">Gallery</string>
-    <string name="live">Camera</string>
-    <string name="emotion_recognition">Engagement Prediction</string>
-    <string name="instruction">Choose a video from your gallery or start a live video using your camera and the neural network will recognize the engagement level.</string>
+    <string name="gallery">GALLERY</string>
+    <string name="live">CAMERA</string>
+    <string name="get_started">GET STARTED</string>
+    <string name="screen1_title">WELCOME!</string>
+    <string name="screen2_title">VIDEO SOURCE</string>
+    <string name="instruction">This app allows you to track engagement in real-time using your phone\'s camera.</string>
+    <string name="instruction2">Please select a video source to start engagement prediction.</string>
     <string name="back">Back</string>
 </resources>

@@ -46,7 +46,7 @@ class  CameraActivity : BaseModuleActivity() {
         return findViewById(R.id.object_detection_texture_view)
     }
 
-    @ExperimentalTime
+    @OptIn(kotlin.time.ExperimentalTime::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(getContentViewLayoutId())
@@ -64,7 +64,7 @@ class  CameraActivity : BaseModuleActivity() {
         }
     }
 
-    @ExperimentalTime
+    @OptIn(kotlin.time.ExperimentalTime::class)
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQUEST_CODE_CAMERA_PERMISSION) {
@@ -82,7 +82,7 @@ class  CameraActivity : BaseModuleActivity() {
         }
     }
 
-    @ExperimentalTime
+    @OptIn(kotlin.time.ExperimentalTime::class)
     @SuppressLint("RestrictedApi")
     fun setupCameraX() {
         val textureView = getCameraPreviewTextureView()
