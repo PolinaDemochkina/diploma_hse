@@ -1,2 +1,2 @@
-# diploma_hse
-This is my final dimploma project for HSE university.
+# Enagement Prediction
+This is my final diploma project for HSE university.
