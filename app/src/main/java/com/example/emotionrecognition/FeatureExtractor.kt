@@ -57,16 +57,16 @@ class EmotionPyTorchVideoClassifier(context: Context) {
             p.isFilterBitmap = true
             p.isDither = true
             p.color = Color.parseColor("#9FFFCB")
-            p.strokeWidth = 6f
+            p.strokeWidth = 8f
             val p_text = Paint()
             p_text.color = Color.WHITE
             p_text.style = Paint.Style.FILL
             p_text.color = Color.parseColor("#9FFFCB")
-            p_text.textSize = 28f
+            p_text.textSize = 90f
             val bbox = result.box
             p.color = Color.parseColor("#9FFFCB")
             c.drawRect(bbox, p)
-            c.drawText(emotion, bbox.left.toFloat(), Math.max(0, bbox.top - 20).toFloat(), p_text)
+            c.drawText(emotion, bbox.right.toFloat(), Math.max(0, bbox.top - 40).toFloat(), p_text)
 
             mOverlayView.setImageBitmap(tempBmp)
         }
@@ -103,13 +103,6 @@ class EmotionPyTorchVideoClassifier(context: Context) {
         }
         val features = mk.ndarray(mk[scores])
         val min = minD2(features, axis = 0).toList()
-//        val max = maxD2(features, axis = 0).toList()
-//        val mean: List<Float> = meanD2(features, axis = 0).toList().map { it.toFloat() }
-//        val std = mutableListOf<Float>()
-//        val rows = features.shape[0]
-//        for (i in 0 until length) {
-//            std.add(calculateSD(features[0.r..rows, i].toList()))
-//        }
         val descriptor1 = min
         var score1 = MainActivity.clf?.predict(descriptor1)
         Log.e(MainActivity.TAG, score1.toString())
@@ -124,20 +117,6 @@ class EmotionPyTorchVideoClassifier(context: Context) {
 
         return labels!![score2class[scoreAdj]!!]
     }
-
-//    private fun calculateSD(numArray: List<Float>): Float {
-//        var sum = 0.0
-//        var standardDeviation = 0.0
-//        for (num in numArray) {
-//            sum += num
-//        }
-//        val mean = sum / numArray.size
-//        for (num in numArray) {
-//            standardDeviation += Math.pow(num - mean, 2.0)
-//        }
-//        val divider = numArray.size - 1
-//        return Math.sqrt(standardDeviation / divider).toFloat()
-//    }
 
     @ExperimentalTime
     fun recognizeLiveVideo(inTensorBuffer: FloatBuffer): String {

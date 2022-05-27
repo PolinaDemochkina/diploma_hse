@@ -60,7 +60,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginBottom="16dp"
-        android:text="@string/screen2_title"
+        android:text="@string/screen1_title"
         android:textColor="#ffffff"
         android:textSize="28sp"
         app:layout_constraintBottom_toTopOf="@+id/instruction1"

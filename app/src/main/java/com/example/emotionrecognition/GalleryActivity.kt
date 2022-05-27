@@ -18,7 +18,6 @@ import androidx.appcompat.app.AppCompatActivity
 import com.example.emotionrecognition.EmotionPyTorchVideoClassifier.Companion.applyToUiAnalyzeImageResult
 import kotlinx.android.synthetic.main.activity_second.*
 import kotlin.math.ceil
-import kotlin.time.ExperimentalTime
 
 
 class GalleryActivity : Runnable, AppCompatActivity() {
@@ -57,8 +56,6 @@ class GalleryActivity : Runnable, AppCompatActivity() {
             Back.visibility = View.VISIBLE
         }
         video.setOnPreparedListener { mp: MediaPlayer ->
-//            mp.setVideoScalingMode(MediaPlayer.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING)
-//            mp.isLooping = true
             mp.setScreenOnWhilePlaying(false)
         }
         video?.start()
@@ -94,7 +91,6 @@ class GalleryActivity : Runnable, AppCompatActivity() {
             val result = MainActivity.videoDetector!!.recognizeVideo(from, to, mmr)
             val elapsed = (System.nanoTime() - start)/10000000
             Log.e(MainActivity.TAG, String.format("Timecost to run PyTorch model inference: $elapsed"))
-//            Log.e(MainActivity.TAG, result!!.mResults)
 
             from += elapsed.toInt()
 
