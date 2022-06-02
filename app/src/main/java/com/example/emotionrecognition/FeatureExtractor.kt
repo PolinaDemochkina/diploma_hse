@@ -3,15 +3,18 @@ package com.example.emotionrecognition
 import android.content.Context
 import android.graphics.*
 import android.media.MediaMetadataRetriever
+import android.util.Base64
 import android.util.Log
 import android.widget.ImageView
 import androidx.annotation.UiThread
 import androidx.annotation.WorkerThread
 import com.example.emotionrecognition.mtcnn.Box
+import com.github.kittinunf.fuel.Fuel
 import org.jetbrains.kotlinx.multik.api.mk
 import org.jetbrains.kotlinx.multik.api.ndarray
 import org.jetbrains.kotlinx.multik.jvm.JvmMath.minD2
 import org.jetbrains.kotlinx.multik.ndarray.operations.toList
+import org.json.JSONObject
 import org.pytorch.IValue
 import org.pytorch.Module
 import org.pytorch.Tensor
@@ -19,7 +22,6 @@ import org.pytorch.torchvision.TensorImageUtils
 import java.io.*
 import java.nio.FloatBuffer
 import java.util.*
-import kotlin.collections.ArrayList
 import kotlin.time.ExperimentalTime
 
 
@@ -75,6 +77,7 @@ class EmotionPyTorchVideoClassifier(context: Context) {
     private var labels: ArrayList<String>? = null
     private var module: Module? = null
     private val length = 1408
+    val authInfo = R.string.API_KEY.toString()+":"+R.string.API_SECRET.toString()
 
     class AnalysisResult(val box: Rect, val mResults: String, val width: Int, val height: Int)
 
@@ -192,9 +195,16 @@ class EmotionPyTorchVideoClassifier(context: Context) {
         }
 
         if (numFrames > 0) {
+            var facesEncoded : Vector<String> = Vector()
             val inTensorBuffer = Tensor.allocateFloatBuffer(Constants.MODEL_INPUT_SIZE*numFrames)
 
             for (i in 0 until numFrames) {
+                val byteArrayOutputStream = ByteArrayOutputStream()
+                faces[i]!!.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream)
+                val byteArray = byteArrayOutputStream.toByteArray()
+                val encoded: String = Base64.encodeToString(byteArray, Base64.DEFAULT)
+                facesEncoded.add(encoded)
+
                 TensorImageUtils.bitmapToFloatBuffer(
                     faces[i],
                     0,
@@ -206,6 +216,18 @@ class EmotionPyTorchVideoClassifier(context: Context) {
                     inTensorBuffer,
                     (i * Constants.MODEL_INPUT_SIZE))
             }
+
+            val json = JSONObject()
+            json.put("image", facesEncoded)
+
+            val (request, response, result) = Fuel.post("http://46.229.141.80:8888/")
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Basic "+
+                        Base64.encodeToString(authInfo.toByteArray(), Base64.DEFAULT))
+                .body(json.toString())
+                .response()
+
+            Log.e(TAG, "Response from OpenFace: $response")
 
             val features = getFeatures(inTensorBuffer, numFrames)
             val emotion = classifyFeatures(features)
