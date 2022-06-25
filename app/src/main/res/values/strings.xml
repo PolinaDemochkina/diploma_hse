@@ -2,12 +2,13 @@
     <string name="app_name">Engagement Prediction</string>
     <string name="gallery">GALLERY</string>
     <string name="live">CAMERA</string>
-    <string name="get_started">GET STARTED</string>
+    <string name="emotion">EMOTION</string>
+    <string name="engagement">ENGAGEMENT</string>
     <string name="screen1_title">WELCOME!</string>
     <string name="screen2_title">VIDEO SOURCE</string>
-    <string name="instruction">This app allows you to track engagement in real-time using your phone\'s camera.</string>
+    <string name="instruction">This app allows you to predict emotions and track engagement in real-time using your phone\'s camera.</string>
     <string name="instruction2">Please select a video source to start engagement prediction.</string>
+    <string name="instruction3">Please select a video source to start emotion recognition.</string>
     <string name="back">Back</string>
-    <string name="API_KEY">ba916c80f034123e2409ebead0979fb1</string>
-    <string name="API_SECRET">078cda95db94c41c5901f005fe05571e10bf35b39ab9066e7ab27e6cda575801</string>>
+    >
 </resources>

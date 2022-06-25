@@ -16,13 +16,12 @@ import android.view.View.VISIBLE
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
-import androidx.annotation.UiThread
 import androidx.annotation.WorkerThread
 import androidx.camera.core.*
 import androidx.camera.core.Preview.OnPreviewOutputUpdateListener
 import androidx.camera.core.Preview.PreviewOutput
 import androidx.core.app.ActivityCompat
-import com.example.emotionrecognition.EmotionPyTorchVideoClassifier.Companion.applyToUiAnalyzeImageResult
+import com.example.emotionrecognition.FeatureExtractor.Companion.applyToUiAnalyzeImageResult
 import com.example.emotionrecognition.mtcnn.Box
 import org.pytorch.Tensor
 import org.pytorch.torchvision.TensorImageUtils
@@ -135,7 +134,7 @@ class  CameraActivity : BaseModuleActivity() {
 
     @ExperimentalTime
     @WorkerThread
-    fun analyzeImage(image: ImageProxy?, width: Int, height: Int): EmotionPyTorchVideoClassifier.AnalysisResult? {
+    fun analyzeImage(image: ImageProxy?, width: Int, height: Int): FeatureExtractor.AnalysisResult? {
         if (mFrameCount == 0) inTensorBuffer =
             Tensor.allocateFloatBuffer(Constants.MODEL_INPUT_SIZE*Constants.COUNT_OF_FRAMES_PER_INFERENCE)
 
@@ -143,14 +142,14 @@ class  CameraActivity : BaseModuleActivity() {
         val matrix = Matrix()
         matrix.postRotate(270.0f)
         bitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, false)
-        val resizedBitmap = MainActivity.resize(bitmap, false)
+        val resizedBitmap = WelcomeActivity.resize(bitmap, false)
         val start = System.nanoTime()
-        val bboxes: Vector<Box> = MainActivity.mtcnnFaceDetector!!.detectFaces(
+        val bboxes: Vector<Box> = WelcomeActivity.mtcnnFaceDetector!!.detectFaces(
             resizedBitmap!!,
             Constants.MIN_FACE_SIZE
         )
         val elapsed = (System.nanoTime() - start)/10000000
-        Log.e(MainActivity.TAG, "Timecost to run MTCNN: $elapsed")
+        Log.e("CameraActivity", "Timecost to run MTCNN: $elapsed")
 
         val box: Box? = bboxes.maxByOrNull { box ->
             box.score
@@ -158,7 +157,7 @@ class  CameraActivity : BaseModuleActivity() {
 
         val bbox = box?.transform2Rect()
         var bboxOrig: Rect?
-        if (MainActivity.videoDetector != null &&  bbox != null) {
+        if ((EngagementActivity.videoDetector != null || EmotionActivity.videoDetector != null) &&  bbox != null) {
             bboxOrig = Rect(
                 bitmap.width * bbox.left / resizedBitmap.width,
                 bitmap.height * bbox.top / resizedBitmap.height,
@@ -192,9 +191,15 @@ class  CameraActivity : BaseModuleActivity() {
 
         mFrameCount = 0
 
-        val result = MainActivity.videoDetector!!.recognizeLiveVideo(inTensorBuffer!!)
+        val tmp = this.baseContext.packageName
+        val result = if (this.baseContext is EngagementActivity) {
+            EngagementActivity.videoDetector!!.recognizeLiveVideo(inTensorBuffer!!)
+        }
+        else {
+            EmotionActivity.videoDetector!!.recognizeLiveVideo(inTensorBuffer!!)
+        }
 
-        return EmotionPyTorchVideoClassifier.AnalysisResult(
+        return FeatureExtractor.AnalysisResult(
             Rect(
                 width - (width * bbox!!.left / resizedBitmap.width),
                 height * bbox.top / resizedBitmap.height,

@@ -15,8 +15,8 @@ import android.widget.TextView
 import androidx.annotation.RequiresApi
 import androidx.annotation.WorkerThread
 import androidx.appcompat.app.AppCompatActivity
-import com.example.emotionrecognition.EmotionPyTorchVideoClassifier.Companion.applyToUiAnalyzeImageResult
-import kotlinx.android.synthetic.main.activity_second.*
+import com.example.emotionrecognition.FeatureExtractor.Companion.applyToUiAnalyzeImageResult
+import kotlinx.android.synthetic.main.activity_gallery.*
 import kotlin.math.ceil
 
 
@@ -24,18 +24,30 @@ class GalleryActivity : Runnable, AppCompatActivity() {
     private var mThread: Thread? = Thread(this)
     private var mStopThread = true
     private var mLastAnalysisResultTime: Long = 0
+    private var engagement = true
 
     @SuppressLint("WrongThread")
     @RequiresApi(Build.VERSION_CODES.N)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_second)
+        setContentView(R.layout.activity_gallery)
 
         val cR: ContentResolver = this.applicationContext.contentResolver
-        val type = cR.getType(MainActivity.content!!)
+        engagement = this.baseContext is EngagementActivity
+        val type = if (engagement) {
+            cR.getType(EngagementActivity.content!!)
+        }
+        else {
+            cR.getType(EmotionActivity.content!!)
+        }
         if (type == "video/mp4") {
             val mp = MediaPlayer()
-            mp.setDataSource(applicationContext, MainActivity.content!!)
+            if (engagement) {
+                mp.setDataSource(applicationContext, EngagementActivity.content!!)
+            }
+            else {
+                mp.setDataSource(applicationContext, EmotionActivity.content!!)
+            }
             mp.prepare()
             val width = mp.videoWidth
             val height = mp.videoHeight
@@ -50,7 +62,12 @@ class GalleryActivity : Runnable, AppCompatActivity() {
     }
 
     private fun startVideo() {
-        video?.setVideoURI(MainActivity.content)
+        if (engagement) {
+            video?.setVideoURI(EngagementActivity.content)
+        }
+        else {
+            video?.setVideoURI(EmotionActivity.content)
+        }
         video?.setOnCompletionListener {
             TopPanel.visibility = View.VISIBLE
             Back.visibility = View.VISIBLE
@@ -63,7 +80,7 @@ class GalleryActivity : Runnable, AppCompatActivity() {
             try {
                 mThread!!.join()
             } catch (e: InterruptedException) {
-                Log.e(MainActivity.TAG, e.localizedMessage)
+                Log.e("GalleryActivity", e.localizedMessage)
             }
         }
         mStopThread = false
@@ -74,7 +91,12 @@ class GalleryActivity : Runnable, AppCompatActivity() {
     @WorkerThread
     override fun run() {   // video recognition
         val mmr = MediaMetadataRetriever()
-        mmr.setDataSource(this.applicationContext, MainActivity.content)
+        if (engagement) {
+            mmr.setDataSource(this.applicationContext, EngagementActivity.content)
+        }
+        else {
+            mmr.setDataSource(this.applicationContext, EmotionActivity.content)
+        }
         val stringDuration = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
         val durationMs = stringDuration!!.toDouble()
 
@@ -88,9 +110,15 @@ class GalleryActivity : Runnable, AppCompatActivity() {
             if (to > durationTo) to = ceil(durationMs).toInt()
 
             val start = System.nanoTime()
-            val result = MainActivity.videoDetector!!.recognizeVideo(from, to, mmr)
+            val result = if (engagement) {
+                EngagementActivity.videoDetector!!.recognizeVideo(from, to, mmr)
+            }
+            else {
+                EmotionActivity.videoDetector!!.recognizeVideo(from, to, mmr)
+            }
+
             val elapsed = (System.nanoTime() - start)/10000000
-            Log.e(MainActivity.TAG, String.format("Timecost to run PyTorch model inference: $elapsed"))
+            Log.e("GalleryActivity", String.format("Timecost to run PyTorch model inference: $elapsed"))
 
             from += elapsed.toInt()
 
@@ -98,7 +126,7 @@ class GalleryActivity : Runnable, AppCompatActivity() {
                 try {
                     Thread.sleep((from - video!!.currentPosition).toLong())
                 } catch (e: InterruptedException) {
-                    Log.e(MainActivity.TAG, "Thread sleep exception: " + e.localizedMessage)
+                    Log.e("GalleryActivity", "Thread sleep exception: " + e.localizedMessage)
                 }
             }
             while (!video!!.isPlaying) {
@@ -106,7 +134,7 @@ class GalleryActivity : Runnable, AppCompatActivity() {
                 try {
                     Thread.sleep(100)
                 } catch (e: InterruptedException) {
-                    Log.e(MainActivity.TAG, "Thread sleep exception: " + e.localizedMessage)
+                    Log.e("GalleryActivity", "Thread sleep exception: " + e.localizedMessage)
                 }
             }
 

@@ -3,18 +3,18 @@ package com.example.emotionrecognition
 import android.content.Context
 import android.graphics.*
 import android.media.MediaMetadataRetriever
-import android.util.Base64
 import android.util.Log
 import android.widget.ImageView
 import androidx.annotation.UiThread
 import androidx.annotation.WorkerThread
 import com.example.emotionrecognition.mtcnn.Box
-import com.github.kittinunf.fuel.Fuel
 import org.jetbrains.kotlinx.multik.api.mk
 import org.jetbrains.kotlinx.multik.api.ndarray
 import org.jetbrains.kotlinx.multik.jvm.JvmMath.minD2
+import org.jetbrains.kotlinx.multik.jvm.JvmMath.maxD2
+import org.jetbrains.kotlinx.multik.jvm.JvmStatistics.meanD2
+import org.jetbrains.kotlinx.multik.ndarray.data.*
 import org.jetbrains.kotlinx.multik.ndarray.operations.toList
-import org.json.JSONObject
 import org.pytorch.IValue
 import org.pytorch.Module
 import org.pytorch.Tensor
@@ -25,19 +25,21 @@ import java.util.*
 import kotlin.time.ExperimentalTime
 
 
-class EmotionPyTorchVideoClassifier(context: Context) {
+class FeatureExtractor(context: Context, feat_len: Int, filename: String) {
     companion object {
         private const val TAG = "Video detection"
-        private const val MODEL_FILE = "effcientNet2_for_mobile.pt"
+        private var featureSize = 0
+
         @Throws(IOException::class)
-        fun assetFilePath(context: Context, assetName: String): String {
+        fun assetFilePath(context: Context, feat_len: Int, assetName: String): String {
+            featureSize = feat_len
             val file = File(context.filesDir, assetName)
             if (file.exists() && file.length() > 0) {
                 return file.absolutePath
             }
             context.assets.open(assetName!!).use { `is` ->
                 FileOutputStream(file).use { os ->
-                    val buffer = ByteArray(4 * 1024)
+                    val buffer = ByteArray(4 * featureSize)
                     var read: Int
                     while (`is`.read(buffer).also { read = it } != -1) {
                         os.write(buffer, 0, read)
@@ -76,8 +78,6 @@ class EmotionPyTorchVideoClassifier(context: Context) {
 
     private var labels: ArrayList<String>? = null
     private var module: Module? = null
-    private val length = 1408
-    val authInfo = R.string.API_KEY.toString()+":"+R.string.API_SECRET.toString()
 
     class AnalysisResult(val box: Rect, val mResults: String, val width: Int, val height: Int)
 
@@ -85,7 +85,11 @@ class EmotionPyTorchVideoClassifier(context: Context) {
         val br: BufferedReader?
         labels = ArrayList()
         try {
-            br = BufferedReader(InputStreamReader(context.assets.open("engagement_labels.txt")))
+            br = if (featureSize === 1208) {
+                BufferedReader(InputStreamReader(context.assets.open("engagement_labels.txt")))
+            } else {
+                BufferedReader(InputStreamReader(context.assets.open("emotion_labels.txt")))
+            }
             br.useLines { lines -> lines.forEach {
                 val categoryInfo = it.trim { it <= ' ' }.split(":").toTypedArray()
                 val category = categoryInfo[1]
@@ -94,38 +98,78 @@ class EmotionPyTorchVideoClassifier(context: Context) {
         } catch (e: IOException) {
             throw RuntimeException("Problem reading label file!", e)
         }
+        Log.e(TAG, labels.toString())
     }
 
-    private fun classifyFeatures(res: FloatArray): String {
+    private fun classifyFeaturesReg(res: FloatArray): String {
         val scores = mutableListOf<Float>()
         val score2class = mapOf(0.0 to 0, 0.33 to 1, 0.66 to 2, 0.99 to 3)
         for (i in 0 until Constants.COUNT_OF_FRAMES_PER_INFERENCE){
-            if ((i+1)*length <= res.size) {
-                scores.addAll(res.sliceArray(length*i until length*(i+1)).toList())
+            if ((i+1)*featureSize <= res.size) {
+                scores.addAll(res.sliceArray(featureSize*i until featureSize*(i+1)).toList())
             }
         }
         val features = mk.ndarray(mk[scores])
         val min = minD2(features, axis = 0).toList()
-        val descriptor1 = min
-        var score1 = MainActivity.clf?.predict(descriptor1)
-        Log.e(MainActivity.TAG, score1.toString())
-        if (score1!! > 1) {
-            score1 = 1.0
+        val descriptor = min
+        var score = EngagementActivity.clf?.predict(descriptor)
+        Log.e(EngagementActivity.TAG, "Prediction score: $score")
+        if (score!! > 1) {
+            score = 1.0
         }
-        else if (score1 < 0) {
-            score1 = 0.0
+        else if (score < 0) {
+            score = 0.0
         }
 
-        val scoreAdj = 0.33*(Math.round(score1!! /0.33))
+        val scoreAdj = 0.33*(Math.round(score!! /0.33))
 
         return labels!![score2class[scoreAdj]!!]
+    }
+
+    private fun classifyFeaturesClass(res: FloatArray): String {
+        val scores = mutableListOf<Float>()
+        for (i in 0 until Constants.COUNT_OF_FRAMES_PER_INFERENCE){
+            if ((i+1)* featureSize <= res.size) {
+                scores.addAll(res.sliceArray(featureSize*i until featureSize*(i+1)).toList())
+            }
+        }
+        val features = mk.ndarray(mk[scores])
+        val min = minD2(features, axis = 0).toList()
+        val max = maxD2(features, axis = 0).toList()
+        val mean: List<Float> = meanD2(features, axis = 0).toList().map { it.toFloat() }
+        val std = mutableListOf<Float>()
+        val rows = features.shape[0]
+        for (i in 0 until featureSize) {
+            std.add(calculateSD(features[0.r..rows, i].toList()))
+        }
+        val descriptor = mean + std + min + max
+        val index = EmotionActivity.clf?.predict(descriptor)
+        Log.e(EmotionActivity.TAG, index.toString())
+        return labels!![index!!]
+    }
+
+    private fun calculateSD(numArray: List<Float>): Float {
+        var sum = 0.0
+        var standardDeviation = 0.0
+        for (num in numArray) {
+            sum += num
+        }
+        val mean = sum / numArray.size
+        for (num in numArray) {
+            standardDeviation += Math.pow(num - mean, 2.0)
+        }
+        val divider = numArray.size - 1
+        return Math.sqrt(standardDeviation / divider).toFloat()
     }
 
     @ExperimentalTime
     fun recognizeLiveVideo(inTensorBuffer: FloatBuffer): String {
         val res = getFeatures(inTensorBuffer, Constants.COUNT_OF_FRAMES_PER_INFERENCE)
-        return classifyFeatures(res)
-        return ""
+        return if (featureSize == 1208) {
+            classifyFeaturesReg(res)
+        } else {
+            classifyFeaturesClass(res)
+        }
     }
 
     private fun getFeatures(inTensorBuffer: FloatBuffer, numFrames: Int): FloatArray {
@@ -161,9 +205,9 @@ class EmotionPyTorchVideoClassifier(context: Context) {
             val timeUs = (1000 * (fromMs + ((toMs - fromMs) * i /
                     (Constants.COUNT_OF_FRAMES_PER_INFERENCE - 1.0)).toInt())).toLong()
             bitmap = mmr.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
-            resizedBitmap = MainActivity.resize(bitmap, false)
+            resizedBitmap = WelcomeActivity.resize(bitmap, false)
             val start = System.nanoTime()
-            val bboxes: Vector<Box> = MainActivity.mtcnnFaceDetector!!.detectFaces(
+            val bboxes: Vector<Box> = WelcomeActivity.mtcnnFaceDetector!!.detectFaces(
                 resizedBitmap!!,
                 Constants.MIN_FACE_SIZE
             )
@@ -175,7 +219,7 @@ class EmotionPyTorchVideoClassifier(context: Context) {
             }
 
             bbox = box?.transform2Rect()
-            if (MainActivity.videoDetector != null &&  bbox != null) {
+            if ((EmotionActivity.videoDetector != null || EngagementActivity.videoDetector != null) &&  bbox != null) {
                 val bboxOrig = Rect(
                     bitmap!!.width * bbox.left / resizedBitmap.width,
                     bitmap.height * bbox.top / resizedBitmap.height,
@@ -195,15 +239,11 @@ class EmotionPyTorchVideoClassifier(context: Context) {
         }
 
         if (numFrames > 0) {
-            var facesEncoded : Vector<String> = Vector()
             val inTensorBuffer = Tensor.allocateFloatBuffer(Constants.MODEL_INPUT_SIZE*numFrames)
 
             for (i in 0 until numFrames) {
                 val byteArrayOutputStream = ByteArrayOutputStream()
                 faces[i]!!.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream)
-                val byteArray = byteArrayOutputStream.toByteArray()
-                val encoded: String = Base64.encodeToString(byteArray, Base64.DEFAULT)
-                facesEncoded.add(encoded)
 
                 TensorImageUtils.bitmapToFloatBuffer(
                     faces[i],
@@ -217,20 +257,13 @@ class EmotionPyTorchVideoClassifier(context: Context) {
                     (i * Constants.MODEL_INPUT_SIZE))
             }
 
-            val json = JSONObject()
-            json.put("image", facesEncoded)
-
-            val (request, response, result) = Fuel.post("http://46.229.141.80:8888/")
-                .header("Content-Type", "application/json")
-                .header("Authorization", "Basic "+
-                        Base64.encodeToString(authInfo.toByteArray(), Base64.DEFAULT))
-                .body(json.toString())
-                .response()
-
-            Log.e(TAG, "Response from OpenFace: $response")
-
             val features = getFeatures(inTensorBuffer, numFrames)
-            val emotion = classifyFeatures(features)
+            var emotion = ""
+            emotion = if (featureSize == 1208) {
+                classifyFeaturesReg(features)
+            } else {
+                classifyFeaturesClass(features)
+            }
 
             return AnalysisResult(
                 Rect(
@@ -245,7 +278,7 @@ class EmotionPyTorchVideoClassifier(context: Context) {
     }
 
     init {
-        module = Module.load(assetFilePath(context, MODEL_FILE))
+        module = Module.load(assetFilePath(context, feat_len, filename))
         loadLabels(context)
     }
 }
