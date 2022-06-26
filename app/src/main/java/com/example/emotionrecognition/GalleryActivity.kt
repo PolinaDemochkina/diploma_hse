@@ -24,7 +24,6 @@ class GalleryActivity : Runnable, AppCompatActivity() {
     private var mThread: Thread? = Thread(this)
     private var mStopThread = true
     private var mLastAnalysisResultTime: Long = 0
-    private var engagement = true
 
     @SuppressLint("WrongThread")
     @RequiresApi(Build.VERSION_CODES.N)
@@ -33,8 +32,7 @@ class GalleryActivity : Runnable, AppCompatActivity() {
         setContentView(R.layout.activity_gallery)
 
         val cR: ContentResolver = this.applicationContext.contentResolver
-        engagement = this.baseContext is EngagementActivity
-        val type = if (engagement) {
+        val type = if (WelcomeActivity.isEngagement) {
             cR.getType(EngagementActivity.content!!)
         }
         else {
@@ -42,7 +40,7 @@ class GalleryActivity : Runnable, AppCompatActivity() {
         }
         if (type == "video/mp4") {
             val mp = MediaPlayer()
-            if (engagement) {
+            if (WelcomeActivity.isEngagement) {
                 mp.setDataSource(applicationContext, EngagementActivity.content!!)
             }
             else {
@@ -62,7 +60,7 @@ class GalleryActivity : Runnable, AppCompatActivity() {
     }
 
     private fun startVideo() {
-        if (engagement) {
+        if (WelcomeActivity.isEngagement) {
             video?.setVideoURI(EngagementActivity.content)
         }
         else {
@@ -91,7 +89,7 @@ class GalleryActivity : Runnable, AppCompatActivity() {
     @WorkerThread
     override fun run() {   // video recognition
         val mmr = MediaMetadataRetriever()
-        if (engagement) {
+        if (WelcomeActivity.isEngagement) {
             mmr.setDataSource(this.applicationContext, EngagementActivity.content)
         }
         else {
@@ -110,7 +108,7 @@ class GalleryActivity : Runnable, AppCompatActivity() {
             if (to > durationTo) to = ceil(durationMs).toInt()
 
             val start = System.nanoTime()
-            val result = if (engagement) {
+            val result = if (WelcomeActivity.isEngagement) {
                 EngagementActivity.videoDetector!!.recognizeVideo(from, to, mmr)
             }
             else {
@@ -153,7 +151,7 @@ class GalleryActivity : Runnable, AppCompatActivity() {
                     mLastAnalysisResultTime = SystemClock.elapsedRealtime()
                     val text: TextView = findViewById(R.id.galleryText)
                     text.visibility = View.GONE
-                    applyToUiAnalyzeImageResult(result, result!!.width, result.height, findViewById(R.id.gallery_overlay))
+                    applyToUiAnalyzeImageResult(result, result!!.width, result.height, findViewById(R.id.gallery_overlay), isCamera = false)
                 }
             }
         }

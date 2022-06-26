@@ -23,7 +23,7 @@ class EmotionActivity : AppCompatActivity() {
 
     private fun init() {
         try {
-            videoDetector = FeatureExtractor(applicationContext, 1024, "EfficientNet_B0.pt")
+            videoDetector = FeatureExtractor(applicationContext, 1280, "EfficientNet_B0.pt")
         } catch (e: java.lang.Exception) {
             Log.e(TAG, "Exception initializing feature extractor!", e)
         }

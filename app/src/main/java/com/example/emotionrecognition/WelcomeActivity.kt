@@ -16,6 +16,7 @@ import java.util.HashMap
 
 class WelcomeActivity : AppCompatActivity() {
     companion object {
+        var isEngagement = false
         var content: Uri? = null
         const val TAG = "WelcomeActivity"
         var mtcnnFaceDetector: FaceDetector? = null
@@ -123,11 +124,13 @@ class WelcomeActivity : AppCompatActivity() {
     }
 
     fun startEmotion(view: View) {
+        isEngagement = false
         val intent = Intent(this@WelcomeActivity, EmotionActivity::class.java)
         startActivity(intent)
     }
 
     fun startEngagement(view: View) {
+        isEngagement = true
         val intent = Intent(this@WelcomeActivity, EngagementActivity::class.java)
         startActivity(intent)
     }

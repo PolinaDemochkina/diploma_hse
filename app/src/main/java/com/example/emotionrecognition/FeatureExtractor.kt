@@ -51,7 +51,7 @@ class FeatureExtractor(context: Context, feat_len: Int, filename: String) {
         }
 
         @UiThread
-        fun applyToUiAnalyzeImageResult(result: AnalysisResult?, width: Int, height: Int, mOverlayView: ImageView) {
+        fun applyToUiAnalyzeImageResult(result: AnalysisResult?, width: Int, height: Int, mOverlayView: ImageView, isCamera: Boolean) {
             val emotion = result!!.mResults
             val tempBmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
             val c = Canvas(tempBmp)
@@ -70,7 +70,12 @@ class FeatureExtractor(context: Context, feat_len: Int, filename: String) {
             val bbox = result.box
             p.color = Color.parseColor("#9FFFCB")
             c.drawRect(bbox, p)
-            c.drawText(emotion, bbox.right.toFloat(), Math.max(0, bbox.top - 40).toFloat(), p_text)
+            if (isCamera) {
+                c.drawText(emotion, bbox.right.toFloat(), Math.max(0, bbox.top - 40).toFloat(), p_text)
+            }
+            else {
+                c.drawText(emotion, bbox.left.toFloat(), Math.max(0, bbox.top - 40).toFloat(), p_text)
+            }
 
             mOverlayView.setImageBitmap(tempBmp)
         }
@@ -85,7 +90,7 @@ class FeatureExtractor(context: Context, feat_len: Int, filename: String) {
         val br: BufferedReader?
         labels = ArrayList()
         try {
-            br = if (featureSize === 1208) {
+            br = if (WelcomeActivity.isEngagement) {
                 BufferedReader(InputStreamReader(context.assets.open("engagement_labels.txt")))
             } else {
                 BufferedReader(InputStreamReader(context.assets.open("emotion_labels.txt")))
@@ -165,7 +170,7 @@ class FeatureExtractor(context: Context, feat_len: Int, filename: String) {
     @ExperimentalTime
     fun recognizeLiveVideo(inTensorBuffer: FloatBuffer): String {
         val res = getFeatures(inTensorBuffer, Constants.COUNT_OF_FRAMES_PER_INFERENCE)
-        return if (featureSize == 1208) {
+        return if (WelcomeActivity.isEngagement) {
             classifyFeaturesReg(res)
         } else {
             classifyFeaturesClass(res)
@@ -259,7 +264,7 @@ class FeatureExtractor(context: Context, feat_len: Int, filename: String) {
 
             val features = getFeatures(inTensorBuffer, numFrames)
             var emotion = ""
-            emotion = if (featureSize == 1208) {
+            emotion = if (WelcomeActivity.isEngagement) {
                 classifyFeaturesReg(features)
             } else {
                 classifyFeaturesClass(features)

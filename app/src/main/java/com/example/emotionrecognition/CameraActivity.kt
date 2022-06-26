@@ -124,7 +124,7 @@ class  CameraActivity : BaseModuleActivity() {
                     runOnUiThread {
                         val text: TextView = findViewById(R.id.liveText)
                         text.visibility = GONE
-                        applyToUiAnalyzeImageResult(result, height, width, findViewById(R.id.overlay))}
+                        applyToUiAnalyzeImageResult(result, height, width, findViewById(R.id.overlay), isCamera = true)}
                 }
             }
 
@@ -191,8 +191,7 @@ class  CameraActivity : BaseModuleActivity() {
 
         mFrameCount = 0
 
-        val tmp = this.baseContext.packageName
-        val result = if (this.baseContext is EngagementActivity) {
+        val result = if (WelcomeActivity.isEngagement) {
             EngagementActivity.videoDetector!!.recognizeLiveVideo(inTensorBuffer!!)
         }
         else {
